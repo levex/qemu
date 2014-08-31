@@ -40,6 +40,9 @@
 
 #define IVSHMEM_REG_BAR_SIZE 0x100
 
+/* Bump everytime you do user visible modifications */
+#define IVSHMEM_CURRENT_VERSION 1
+
 //#define DEBUG_IVSHMEM
 #ifdef DEBUG_IVSHMEM
 #define IVSHMEM_DPRINTF(fmt, ...)        \
@@ -74,6 +77,7 @@ typedef struct IVShmemState {
     CharDriverState **eventfd_chr;
     CharDriverState *server_chr;
     MemoryRegion ivshmem_mmio;
+    MemoryRegion ivshmem_secondreg;
 
     /* We might need to register the BAR before we actually have the memory.
      * So prepare a container MemoryRegion for the BAR immediately and
@@ -109,6 +113,13 @@ enum ivshmem_registers {
     INTRSTATUS = 4,
     IVPOSITION = 8,
     DOORBELL = 12,
+};
+
+/* BAR3 registers act as secondary registers */
+enum ivshmem_secondary_registers {
+    IRQSTATUS = 0,
+    IVSHMVER = 4,
+    /* Rest is reserved */
 };
 
 static inline uint32_t ivshmem_has_feature(IVShmemState *ivs,
@@ -248,9 +259,37 @@ static uint64_t ivshmem_io_read(void *opaque, hwaddr addr,
     return ret;
 }
 
+static uint64_t ivshmem_secondreg_read(void *opaque, hwaddr addr,
+                                       unsigned size)
+{
+    IVShmemState *s = opaque;
+    uint32_t ret = 0;
+
+    switch(addr)
+    {
+        case IRQSTATUS:
+            ret = s->intrstatus;
+	    break;
+        case IVSHMVER:
+            ret = IVSHMEM_CURRENT_VERSION;
+            break;
+    }
+
+    return ret;
+}
+
 static const MemoryRegionOps ivshmem_mmio_ops = {
     .read = ivshmem_io_read,
     .write = ivshmem_io_write,
+    .endianness = DEVICE_NATIVE_ENDIAN,
+    .impl = {
+        .min_access_size = 4,
+        .max_access_size = 4,
+    },
+};
+
+static const MemoryRegionOps ivshmem_secondreg_ops = {
+    .read = ivshmem_secondreg_read,
     .endianness = DEVICE_NATIVE_ENDIAN,
     .impl = {
         .min_access_size = 4,
@@ -706,6 +745,13 @@ static int pci_ivshmem_init(PCIDevice *dev)
     /* region for registers*/
     pci_register_bar(dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &s->ivshmem_mmio);
+
+    /* register secondary registers */
+    memory_region_init_io(&s->ivshmem_secondreg, OBJECT(s), &ivshmem_secondreg_ops, s,
+                          "ivshmem-secondreg", IVSHMEM_REG_BAR_SIZE);
+
+    pci_register_bar(dev, 3, PCI_BASE_ADDRESS_SPACE_MEMORY,
+                    &s->ivshmem_secondreg);
 
     memory_region_init(&s->bar, OBJECT(s), "ivshmem-bar2-container", s->ivshmem_size);
     s->ivshmem_attr = PCI_BASE_ADDRESS_SPACE_MEMORY |
