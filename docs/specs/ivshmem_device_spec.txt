@@ -13,10 +13,12 @@ The Inter-VM PCI device
 
 *BARs*
 
-The device supports three BARs.  BAR0 is a 1 Kbyte MMIO region to support
+The device supports four BARs.  BAR0 is a 1 Kbyte MMIO region to support
 registers.  BAR1 is used for MSI-X when it is enabled in the device.  BAR2 is
 used to map the shared memory object from the host.  The size of BAR2 is
 specified when the guest is started and must be a power of 2 in size.
+BAR3 is used for secondary registers, which give information about the
+PCI device itself.
 
 *Registers*
 
@@ -84,6 +86,26 @@ supporting multiple MSI vectors can use different vectors to indicate different
 events have occurred.  The semantics of interrupt vectors are left to the
 user's discretion.
 
+*Secondary Registers*
+
+Secondary registers are used to give information about the PCI device to the
+guest. They reside in BAR3, which is laid out like this:
+
+enum ivshmem_secondary_registers {
+    IRQSTATUS = 0,
+    IVSHMVER = 4,
+    /* Rest is reserved */
+};
+
+Description of the registers follows:
+
+IRQSTATUS register: This register acts the same as the Status Register in BAR0,
+but will NOT reset its value when read.
+
+IVSHMVER register: This register tells the current version of the Inter-VM
+Shared Memory PCI device itself. The current version is defined as a preprocessor
+macro called 'IVSHMEM_CURRENT_VERSION' in hw/misc/ivshmem.c If the guest cannot
+find BAR3, then it must assume that IVSHMVER is 0.
 
 Usage in the Guest
 ------------------
