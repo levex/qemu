@@ -94,6 +94,7 @@ guest. They reside in BAR3, which is laid out like this:
 enum ivshmem_secondary_registers {
     IRQSTATUS = 0,
     IVSHMVER = 4,
+    IVFEATURES = 8,
     /* Rest is reserved */
 };
 
@@ -106,6 +107,13 @@ IVSHMVER register: This register tells the current version of the Inter-VM
 Shared Memory PCI device itself. The current version is defined as a preprocessor
 macro called 'IVSHMEM_CURRENT_VERSION' in hw/misc/ivshmem.c If the guest cannot
 find BAR3, then it must assume that IVSHMVER is 0.
+
+IVFEATURES register: This register tells the currently enabled features of the
+ivshmem device. The value is a bit field:
+
+Bit  #0    (FIOEFD):   I/O Event FD enabled
+Bit  #1    (FMSI):     MSI enabled
+Bits #2-31 (FRESV):    Reserved
 
 Usage in the Guest
 ------------------
