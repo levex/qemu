@@ -32,6 +32,7 @@
 #define PCI_VENDOR_ID_IVSHMEM   PCI_VENDOR_ID_REDHAT_QUMRANET
 #define PCI_DEVICE_ID_IVSHMEM   0x1110
 
+/* ivshmem features */
 #define IVSHMEM_IOEVENTFD   0
 #define IVSHMEM_MSI     1
 
@@ -119,6 +120,7 @@ enum ivshmem_registers {
 enum ivshmem_secondary_registers {
     IRQSTATUS = 0,
     IVSHMVER = 4,
+    IVFEATURES = 8,
     /* Rest is reserved */
 };
 
@@ -272,6 +274,9 @@ static uint64_t ivshmem_secondreg_read(void *opaque, hwaddr addr,
 	    break;
         case IVSHMVER:
             ret = IVSHMEM_CURRENT_VERSION;
+            break;
+        case IVFEATURES:
+            ret = s->features;
             break;
     }
 
